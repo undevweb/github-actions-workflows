@@ -1,0 +1,48 @@
+name: Deploy Nuxt 3 - v1.0.0
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        required: true
+        type: string
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 20.5.1
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build the application
+        env:
+          NUXT_PUBLIC_API_URL: ${{ secrets.NUXT_PUBLIC_API_URL }}
+          NUXT_PUBLIC_DISCORD_CLIENT_ID: ${{ secrets.NUXT_PUBLIC_DISCORD_CLIENT_ID }}
+          NUXT_PUBLIC_DISCORD_SCOPE: ${{ secrets.NUXT_PUBLIC_DISCORD_SCOPE }}
+          ENV: ${{ secrets.ENV }}
+        run: npm run generate
+
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H ${{ secrets.DEPLOY_URL }} >> ~/.ssh/known_hosts
+
+      - name: Deploy !
+        run: |
+          ssh ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_URL }} "
+            setfacl -R -m d:g:www-data:rwx ${{ secrets.DEPLOY_PATH }} && \
+            rm -rf ${{ secrets.DEPLOY_PATH }}/*
+          "
+          scp -r dist/* ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_URL }}:${{ secrets.DEPLOY_PATH }}

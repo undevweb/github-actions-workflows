@@ -1,0 +1,22 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main, staging]
+  pull_request:
+    branches: [main, staging]
+
+jobs:
+  deploy-main:
+    if: github.ref == 'refs/heads/main'
+    uses: ./.github/workflows/deploy-nuxt-3-template.yml
+    secrets: inherit
+    with:
+      environment: production
+
+  deploy-staging:
+    if: github.ref == 'refs/heads/staging'
+    uses: ./.github/workflows/deploy-nuxt-3-template.yml
+    secrets: inherit
+    with:
+      environment: staging
